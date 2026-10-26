@@ -17,21 +17,21 @@ PHONE_NUMBER = os.environ.get("PHONE_NUMBER", "")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 CHAT_ID = int(os.environ.get("CHAT_ID", "0"))
 
-# اليوزربوت للفحص
+# اليوزربوت للفحص الحقيقي
 client = TelegramClient('shadow_session', API_ID, API_HASH)
-# بوت تليجرام للاستجابة السريعة للأوامر
+# بوت تليجرام للاستجابة للأوامر
 bot = telebot.TeleBot(BOT_TOKEN)
 
 is_hunting = False
 
-# ==================== خادم الويب لـ Render ====================
+# ==================== خادم الويب الأساسي لـ Render ====================
 app = Flask(__name__)
 
 @app.route('/')
 def health_check():
     return "Shadow System: Online & Active", 200
 
-# ==================== توليد الأنماط ====================
+# ==================== توليد الأنماط (رباعي وخماسي مع شرطة) ====================
 def generate_username():
     length = random.choice([4, 5])
     chars = string.ascii_lowercase + string.digits
@@ -46,18 +46,18 @@ def generate_username():
             
     return "".join(result)
 
-# ==================== محرك الصيد الفعلي ====================
+# ==================== محرك الصيد الفعلي والدقيق ====================
 async def check_and_hunt():
     global is_hunting
-    bot.send_message(CHAT_ID, "⚔️ **تم إطلاق محرك الصيد الحقيقي والمطور بنجاح!**\nجارٍ فحص اليوزرات المتاحة بدقة...")
+    bot.send_message(CHAT_ID, "⚔️ **تم إطلاق محرك الصيد الحقيقي والمطور!**\nجارٍ الفحص والبحث عن اليوزرات المتاحة بدقة...")
     
     while is_hunting:
         username = generate_username()
         try:
-            # الفحص الحقيقي عبر تيليجرام API
+            # الفحص الحقيقي 100% عبر بروتوكول تيليجرام
             result = await client(CheckUsernameRequest(username=username))
             if result:
-                msg = f"🎯 **صيد مؤكد ومتاح رسمياً!**\n\n🔹 **اليوزر:** `@{username}`\n📏 **الطول:** {len(username)}\n⚡ **الحالة:** متاح وجاهز للحجز الفوري"
+                msg = f"🎯 **صيد مؤكد ومتاح رسمياً!**\n\n🔹 **اليوزر:** `@{username}`\n📏 **الطول:** {len(username)}\n⚡ **الحالة:** جاهز للحجز الفوري"
                 bot.send_message(CHAT_ID, msg, parse_mode="Markdown")
                 print(f"[SUCCESS] Available username found: @{username}")
                 
@@ -80,9 +80,8 @@ def run_async_hunter():
     async def main():
         if not client.is_connected():
             await client.start(phone=PHONE_NUMBER)
-        print("Userbot connected successfully for hunting!")
+        print("Userbot connected successfully!")
         
-        # حلقة المراقبة أثناء تفعيل الصيد
         while True:
             if is_hunting:
                 await check_and_hunt()
@@ -90,7 +89,7 @@ def run_async_hunter():
             
     loop.run_until_complete(main())
 
-# ==================== أوامر التحكم عبر البوت العادي ====================
+# ==================== الأوامر عبر البوت المساعد ====================
 @bot.message_handler(commands=['start'])
 def start_cmd(message):
     bot.reply_to(message, "👋 أهلاً بك يا سيد الظل.\nأرسل /hunt لبدء الصيد الحقيقي، أو /stop للإيقاف.")
@@ -114,10 +113,10 @@ if __name__ == "__main__":
     # تشغيل اليوزربوت في الخلفية
     threading.Thread(target=run_async_hunter, daemon=True).start()
     
-    # تشغيل بوت تليجرام للاستجابة للأوامر
+    # تشغيل استقبال أوامر بوت التليجرام
     threading.Thread(target=lambda: bot.infinity_polling(timeout=10, long_polling_timeout=5), daemon=True).start()
     
-    # تشغيل خادم الويب في الخيط الرئيسي لـ Render
+    # تشغيل خادم الويب الأساسي في الخيط الرئيسي ليبقى Render مستقراً
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
 
