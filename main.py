@@ -1,6 +1,5 @@
 import random
 import string
-import time
 import os
 import asyncio
 import threading
@@ -17,6 +16,7 @@ PHONE_NUMBER = os.environ.get("PHONE_NUMBER", "")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 CHAT_ID = int(os.environ.get("CHAT_ID", "0"))
 
+# استخدام جلسة مستقلة
 client = TelegramClient('shadow_session', API_ID, API_HASH)
 bot = telebot.TeleBot(BOT_TOKEN)
 
@@ -44,14 +44,12 @@ def generate_username():
 
 async def check_and_hunt():
     global is_hunting
-    bot.send_message(CHAT_ID, "⚔️ **تم تفعيل محرك الصيد!**\nجارٍ فحص اليوزرات الآن...")
+    bot.send_message(CHAT_ID, "⚔️ **تم إطلاق محرك الصيد بنجاح!**\nجارٍ فحص اليوزرات المتاحة...")
     
     while is_hunting:
         username = generate_username()
         try:
-            # طباعة اليوزر في السجلات لترى أنه يبحث بدون توقف
             print(f"[CHECKING] Testing username: @{username}")
-            
             result = await client(CheckUsernameRequest(username=username))
             if result:
                 msg = f"🎯 **صيد مؤكد ومتاح رسمياً!**\n\n🔹 **اليوزر:** `@{username}`\n📏 **الطول:** {len(username)}\n⚡ **الحالة:** جاهز للحجز الفوري"
@@ -68,7 +66,6 @@ async def check_and_hunt():
         except Exception as e:
             print(f"خطأ: {e}")
             
-        # تقليل الفاصل الزمني قليلاً لزيادة سرعة الصيد
         await asyncio.sleep(random.uniform(2.0, 4.0))
 
 def run_async_hunter():
@@ -76,8 +73,8 @@ def run_async_hunter():
     asyncio.set_event_loop(loop)
     
     async def main():
-        if not client.is_connected():
-            await client.start(phone=PHONE_NUMBER)
+        # الاتصال الآمن مع تمرير رقم الهاتف لتجنب الأخطاء
+        await client.start(phone=PHONE_NUMBER)
         print("Userbot connected successfully!")
         
         while True:
@@ -107,8 +104,19 @@ def stop_cmd(message):
     bot.reply_to(message, "🛑 تم إيقاف عملية الصيد.")
 
 if __name__ == "__main__":
+    # تشغيل الفاحص في الخلفية
     threading.Thread(target=run_async_hunter, daemon=True).start()
-    threading.Thread(target=lambda: bot.infinity_polling(timeout=10, long_polling_timeout=5), daemon=True).start()
     
+    # استخدام استماع آمن للـ Bot لمنع تكرار الـ Conflict
+    def start_polling():
+        try:
+            bot.remove_webhook()
+            bot.infinity_polling(timeout=10, long_polling_timeout=5)
+        except Exception as e:
+            print(f"Polling error: {e}")
+
+    threading.Thread(target=start_polling, daemon=True).start()
+    
+    # تشغيل سيرفر الويب لـ Render
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
