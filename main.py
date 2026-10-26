@@ -3,6 +3,7 @@ import string
 import time
 import os
 import asyncio
+import threading
 from flask import Flask
 from telethon import TelegramClient, events
 from telethon.tl.functions.account import CheckUsernameRequest
@@ -17,16 +18,12 @@ CHAT_ID = int(os.environ.get("CHAT_ID", "0"))
 client = TelegramClient('shadow_session', API_ID, API_HASH)
 is_hunting = False
 
-# ==================== سيرفر الويب لـ Render ====================
+# ==================== خادم الويب الأساسي لـ Render ====================
 app = Flask(__name__)
 
 @app.route('/')
 def health_check():
     return "Shadow Userbot System: Online & Active", 200
-
-def run_web_server():
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port, use_reloader=False)
 
 # ==================== توليد الأنماط (رباعي وخماسي مع شرطة) ====================
 def generate_username():
@@ -46,7 +43,7 @@ def generate_username():
 # ==================== محرك الصيد المباشر ====================
 async def check_and_hunt():
     global is_hunting
-    print("⚔️ تم تفعيل محرك الصيد المباشر...")
+    print("⚔️ تم تفعيل محرك الصيد المباشر في الخلفية...")
     
     while is_hunting:
         username = generate_username()
@@ -69,12 +66,12 @@ async def check_and_hunt():
             
         await asyncio.sleep(random.uniform(4.0, 7.0))
 
-# ==================== تشغيل البوت ====================
+# ==================== تشغيل اليوزربوت ====================
 async def main_loop():
     if not client.is_connected():
         await client.start(phone=PHONE_NUMBER)
     
-    print("Userbot is running successfully!")
+    print("Userbot is connected and running successfully!")
 
     @client.on(events.NewMessage(pattern='/hunt'))
     async def start_handler(event):
@@ -93,14 +90,19 @@ async def main_loop():
         is_hunting = False
         await event.respond("🛑 تم إيقاف عملية الصيد.")
 
+    # تشغيل اليوزربوت بشكل دائم دون حظر خيط الويب
     await client.run_until_disconnected()
 
+def run_bot_in_background():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(main_loop())
+
 if __name__ == "__main__":
-    import threading
-    # تشغيل سيرفر الويب في خلفية مستقلة تماماً
-    web_thread = threading.Thread(target=run_web_server, daemon=True)
-    web_thread.start()
+    # تشغيل اليوزربوت في خيط منفصل تماماً عن خادم الويب
+    bot_thread = threading.Thread(target=run_bot_in_background, daemon=True)
+    bot_thread.start()
     
-    # تشغيل اليوزربوت في الحلقة الرئيسية
-    with client:
-        client.loop.run_until_complete(main_loop())
+    # تشغيل خادم الويب في الخيط الرئيسي لكي تبقى خدمة Render نشطة (Live) للأبد
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
