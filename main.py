@@ -24,6 +24,10 @@ app = Flask(__name__)
 def health_check():
     return "Shadow Userbot System: Online & Active", 200
 
+def run_web_server():
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port, use_reloader=False)
+
 # ==================== توليد الأنماط (رباعي وخماسي مع شرطة) ====================
 def generate_username():
     length = random.choice([4, 5])
@@ -91,13 +95,12 @@ async def main_loop():
 
     await client.run_until_disconnected()
 
-# تشغيل خادم الويب بجانب التيليجرام في الخلفية
-import threading
-def run_web():
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
-
 if __name__ == "__main__":
-    threading.Thread(target=run_web, daemon=True).start()
+    import threading
+    # تشغيل سيرفر الويب في خلفية مستقلة تماماً
+    web_thread = threading.Thread(target=run_web_server, daemon=True)
+    web_thread.start()
+    
+    # تشغيل اليوزربوت في الحلقة الرئيسية
     with client:
         client.loop.run_until_complete(main_loop())
