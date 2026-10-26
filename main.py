@@ -2,10 +2,8 @@ import random
 import string
 import os
 import asyncio
-import threading
-import telebot
 from flask import Flask
-from telethon import TelegramClient
+from telethon import TelegramClient, events
 from telethon.tl.functions.account import CheckUsernameRequest
 from telethon.errors import FloodWaitError, UsernameOccupiedError, UsernameInvalidError
 
@@ -13,21 +11,24 @@ from telethon.errors import FloodWaitError, UsernameOccupiedError, UsernameInval
 API_ID = int(os.environ.get("API_ID", "0"))
 API_HASH = os.environ.get("API_HASH", "")
 PHONE_NUMBER = os.environ.get("PHONE_NUMBER", "")
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 CHAT_ID = int(os.environ.get("CHAT_ID", "0"))
 
-# استخدام جلسة مستقلة
+# استخدام جلسة واحدة موحدة وآمنة
 client = TelegramClient('shadow_session', API_ID, API_HASH)
-bot = telebot.TeleBot(BOT_TOKEN)
-
 is_hunting = False
 
+# سيرفر خفيف لتبقى خدمة Render نشطة (Live) للأبد
 app = Flask(__name__)
 
 @app.route('/')
 def health_check():
     return "Shadow System: Online & Active", 200
 
+def run_web_server():
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
+
+# ==================== توليد الأنماط (رباعي وخماسي مع شرطة) ====================
 def generate_username():
     length = random.choice([4, 5])
     chars = string.ascii_lowercase + string.digits
@@ -42,9 +43,10 @@ def generate_username():
             
     return "".join(result)
 
+# ==================== محرك الصيد الفعلي والدقيق ====================
 async def check_and_hunt():
     global is_hunting
-    bot.send_message(CHAT_ID, "⚔️ **تم إطلاق محرك الصيد بنجاح!**\nجارٍ فحص اليوزرات المتاحة...")
+    print("⚔️ تم تفعيل محرك الصيد المباشر في الخلفية...")
     
     while is_hunting:
         username = generate_username()
@@ -53,7 +55,7 @@ async def check_and_hunt():
             result = await client(CheckUsernameRequest(username=username))
             if result:
                 msg = f"🎯 **صيد مؤكد ومتاح رسمياً!**\n\n🔹 **اليوزر:** `@{username}`\n📏 **الطول:** {len(username)}\n⚡ **الحالة:** جاهز للحجز الفوري"
-                bot.send_message(CHAT_ID, msg, parse_mode="Markdown")
+                await client.send_message(CHAT_ID, msg)
                 print(f"[SUCCESS] Available username found: @{username}")
                 
         except UsernameOccupiedError:
@@ -68,55 +70,35 @@ async def check_and_hunt():
             
         await asyncio.sleep(random.uniform(2.0, 4.0))
 
-def run_async_hunter():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    
-    async def main():
-        # الاتصال الآمن مع تمرير رقم الهاتف لتجنب الأخطاء
-        await client.start(phone=PHONE_NUMBER)
-        print("Userbot connected successfully!")
-        
-        while True:
-            if is_hunting:
-                await check_and_hunt()
-            await asyncio.sleep(1)
-            
-    loop.run_until_complete(main())
+# ==================== استقبال الأوامر عبر اليوزربوت مباشرة ====================
+async def main_loop():
+    await client.start(phone=PHONE_NUMBER)
+    print("Userbot connected and running successfully!")
 
-@bot.message_handler(commands=['start'])
-def start_cmd(message):
-    bot.reply_to(message, "👋 أهلاً بك يا سيد الظل.\nأرسل /hunt لبدء الصيد، أو /stop للإيقاف.")
+    @client.on(events.NewMessage(pattern='/hunt'))
+    async def start_handler(event):
+        global is_hunting
+        # الاستجابة للأمر إذا تم إرساله من حسابك الشخصي أو رسائلك المحفوظة
+        if not is_hunting:
+            is_hunting = True
+            asyncio.create_task(check_and_hunt())
+            await event.respond("🚀 تم إطلاق محرك الصيد بنجاح.")
+        else:
+            await event.respond("⚠️ المحرك يعمل بالفعل.")
 
-@bot.message_handler(commands=['hunt'])
-def hunt_cmd(message):
-    global is_hunting
-    if not is_hunting:
-        is_hunting = True
-        bot.reply_to(message, "🚀 تم إعطاء أمر البدء، جارٍ تشغيل المحرك...")
-    else:
-        bot.reply_to(message, "⚠️ المحرك يعمل بالفعل.")
+    @client.on(events.NewMessage(pattern='/stop'))
+    async def stop_handler(event):
+        global is_hunting
+        is_hunting = False
+        await event.respond("🛑 تم إيقاف عملية الصيد.")
 
-@bot.message_handler(commands=['stop'])
-def stop_cmd(message):
-    global is_hunting
-    is_hunting = False
-    bot.reply_to(message, "🛑 تم إيقاف عملية الصيد.")
+    await client.run_until_disconnected()
 
 if __name__ == "__main__":
-    # تشغيل الفاحص في الخلفية
-    threading.Thread(target=run_async_hunter, daemon=True).start()
+    import threading
+    # تشغيل سيرفر الويب في خيط منفصل
+    threading.Thread(target=run_web_server, daemon=True).start()
     
-    # استخدام استماع آمن للـ Bot لمنع تكرار الـ Conflict
-    def start_polling():
-        try:
-            bot.remove_webhook()
-            bot.infinity_polling(timeout=10, long_polling_timeout=5)
-        except Exception as e:
-            print(f"Polling error: {e}")
-
-    threading.Thread(target=start_polling, daemon=True).start()
-    
-    # تشغيل سيرفر الويب لـ Render
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    # تشغيل اليوزربوت في الحلقة الرئيسية
+    with client:
+        client.loop.run_until_complete(main_loop())
