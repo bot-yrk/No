@@ -12,22 +12,17 @@ from telethon.errors import FloodWaitError, UsernameOccupiedError, UsernameInval
 API_ID = int(os.environ.get("API_ID", "0"))
 API_HASH = os.environ.get("API_HASH", "")
 PHONE_NUMBER = os.environ.get("PHONE_NUMBER", "")
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 CHAT_ID = int(os.environ.get("CHAT_ID", "0"))
 
 client = TelegramClient('shadow_session', API_ID, API_HASH)
 is_hunting = False
 
-# سيرفر خفيف للبقاء نشطاً على Render
+# ==================== سيرفر الويب لـ Render ====================
 app = Flask(__name__)
 
 @app.route('/')
 def health_check():
     return "Shadow Userbot System: Online & Active", 200
-
-def run_web_server():
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
 
 # ==================== توليد الأنماط (رباعي وخماسي مع شرطة) ====================
 def generate_username():
@@ -47,15 +42,12 @@ def generate_username():
 # ==================== محرك الصيد المباشر ====================
 async def check_and_hunt():
     global is_hunting
-    print("⚔️ تم تفعيل محرك الصيد المباشر والنظيف...")
+    print("⚔️ تم تفعيل محرك الصيد المباشر...")
     
     while is_hunting:
         username = generate_username()
         try:
-            # فحص التوفر باستخدام الاستدعاء المباشر لسيرفر تيليجرام
             result = await client(CheckUsernameRequest(username=username))
-            
-            # إذا كانت النتيجة True يعني أن اليوزر متاح تماماً
             if result:
                 msg = f"🎯 **صيد مؤكد ومتاح رسمياً!**\n\n🔹 **اليوزر:** `@{username}`\n📏 **الطول:** {len(username)}\n⚡ **الحالة:** جاهز للحجز الفوري"
                 await client.send_message(CHAT_ID, msg)
@@ -66,14 +58,14 @@ async def check_and_hunt():
         except UsernameInvalidError:
             pass
         except FloodWaitError as e:
-            print(f"⚠️ حظر مؤقت، جاري الانتظار لمدة {e.seconds} ثانية...")
+            print(f"⚠️ حظر مؤقت، الانتظار لمدة {e.seconds} ثانية...")
             await asyncio.sleep(e.seconds)
         except Exception as e:
-            print(f"خطأ غير متوقع: {e}")
+            print(f"خطأ: {e}")
             
         await asyncio.sleep(random.uniform(4.0, 7.0))
 
-# ==================== الأوامر والتشغيل ====================
+# ==================== تشغيل البوت ====================
 async def main_loop():
     if not client.is_connected():
         await client.start(phone=PHONE_NUMBER)
@@ -99,9 +91,13 @@ async def main_loop():
 
     await client.run_until_disconnected()
 
+# تشغيل خادم الويب بجانب التيليجرام في الخلفية
+import threading
+def run_web():
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
+
 if __name__ == "__main__":
-    import threading
-    threading.Thread(target=run_web_server, daemon=True).start()
-    
+    threading.Thread(target=run_web, daemon=True).start()
     with client:
         client.loop.run_until_complete(main_loop())
