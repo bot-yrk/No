@@ -50,9 +50,9 @@ def get_hunting_settings(platform):
     print(f"{P}║         {C}إعدادات الصيد                  {P}║")
     print(f"{P}╠══════════════════════════════════════╣")
     if not tok:
-        print(f"\n{L}التـــــــــــتـوڪــــن:  {F}"); tok = input("")
+        print(f"\n{L}التـــــــــــتـوڪــــن:  {F}"); tok = input("8611579779:AAEXVTGW7pIIwv5wA1FbLUzcWuD9smPWH80")
     if not iid:
-        print(f"\n{L}الايـــــــــدي:  {F}"); iid = input("")
+        print(f"\n{L}الايـــــــــدي:  {F}"); iid = input("8487652113")
     if platform == "facebook":
         print(f"{P}╠══════════════════════════════════════╣")
         v = input(f"{P}║   {C}هل تريد استخدام VPN؟ (y/n): {F}").lower()
