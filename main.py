@@ -41,7 +41,11 @@ def show_main_menu():
     {F}║   {P}4. {C}صيد كومبو (فيسبوك + جيميل)        {F}║
     {F}║   {P}5. {R}خروج                             {F}║
     ╚══════════════════════════════════════╝""")
-    return input(f"{P}أدخل اختيارك (1-5): {F}")
+    try:
+        return input(f"{P}أدخل اختيارك (1-5): {F}")
+    except (EOFError, KeyboardInterrupt):
+        # حل مشكلة التشغيل السحابي غير التفاعلي (يختار صيد تيك توك افتراضياً لتستمر الأداة بالعمل دون كراش)
+        return "2"
 
 def get_hunting_settings(platform):
     os.system('clear' if os.name == 'posix' else 'cls'); elia5()
@@ -50,22 +54,15 @@ def get_hunting_settings(platform):
     print(f"{P}║         {C}إعدادات الصيد                  {P}║")
     print(f"{P}╠══════════════════════════════════════╣")
     if not tok:
-        print(f"\n{L}التـــــــــــتـوڪــــن:  {F}"); tok = input("8611579779:AAEXVTGW7pIIwv5wA1FbLUzcWuD9smPWH80")
+        print(f"\n{L}التـــــــــــتـوڪــــن:  {F}"); tok = "8611579779:AAEXVTGW7pIIwv5wA1FbLUzcWuD9smPWH80"
     if not iid:
-        print(f"\n{L}الايـــــــــدي:  {F}"); iid = input("8487652113")
+        print(f"\n{L}الايـــــــــدي:  {F}"); iid = "8487652113"
     if platform == "facebook":
         print(f"{P}╠══════════════════════════════════════╣")
-        v = input(f"{P}║   {C}هل تريد استخدام VPN؟ (y/n): {F}").lower()
-        use_vpn = True if v == 'y' else False
+        v = 'n'
     print(f"{P}╠══════════════════════════════════════╣")
-    threads = input(f"{P}║   {C}عدد الثريدات (1-10): {F}")
-    try:
-        threads = int(threads)
-        if threads < 1: threads = 1
-        elif threads > 10: threads = 10
-    except: threads = 1
+    threads = 3
     print(f"{P}╚══════════════════════════════════════╝")
-    input(f"\n{P}اضغط Enter لبدء الصيد...{F}")
     return threads
 
 def send_welcome_video(platform):
@@ -184,7 +181,7 @@ def start_hunting(platform, threads_count=1):
     def run_thread():
         while True:
             t_func()
-            time.sleep(1.5) # تأخير بسيط لتجنب الحظر وتحديث الشاشة
+            time.sleep(1.5)
             
     for _ in range(threads_count):
         t = threading.Thread(target=run_thread); t.daemon = True; t.start()
